@@ -1,23 +1,36 @@
 import { GeofenceZone } from '@/types/models';
 import * as Haptics from 'expo-haptics';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+let Notifications: any = null;
+
+try {
+  Notifications = require('expo-notifications');
+  // Configure notification handler
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (error) {
+  console.warn('Notifications not available in this environment');
+}
 
 export async function requestNotificationPermissions(): Promise<boolean> {
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+  if (!Notifications) return false;
+  try {
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch (error) {
+    console.warn('Notification permission request failed', error);
+    return false;
+  }
 }
 
 export async function createNotificationChannels(): Promise<void> {
+  if (!Notifications) return;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('safe', {
       name: 'Safe Zone',
@@ -61,6 +74,8 @@ export async function sendGeofenceNotification(
   zone: GeofenceZone,
   eventType: 'enter' | 'exit' | 'breach'
 ): Promise<void> {
+  if (!Notifications) return;
+
   const messages = {
     enter: `${deviceName} entered ${zone.name}`,
     exit: `${deviceName} exited ${zone.name}`,
@@ -92,6 +107,8 @@ export async function sendDeviceOfflineNotification(
   deviceName: string,
   minutesOffline: number
 ): Promise<void> {
+  if (!Notifications) return;
+
   await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   
   await Notifications.scheduleNotificationAsync({
