@@ -1,98 +1,210 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View, Alert } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { BatteryOptimizationBar } from '@/components/battery-optimization-bar';
+import { DeviceRegistrationForm } from '@/components/device-registration-form';
+import { LocationHistoryPanel } from '@/components/location-history-panel';
+import { MapCard } from '@/components/map-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Colors } from '@/constants/theme';
+import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
+import { loadDevices, loadHistory, loadSettings, loadZones, saveDevices, saveHistory, saveSettings, saveZones } from '@/services/storage-service';
+import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
+import { startForegroundTracking, stopForegroundTracking } from '@/services/location-tracking';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [zones, setZones] = useState<GeofenceZone[]>([]);
+  const [history, setHistory] = useState<LocationHistoryPoint[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>();
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>();
+  const [batteryLevel, setBatteryLevel] = useState<number | undefined>(undefined);
+  const [batterySaver, setBatterySaver] = useState(true);
+  const trackingInterval = useMemo(() => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver), [batteryLevel, batterySaver]);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
+  // load persisted data
+  useEffect(() => {
+    (async () => {
+      const [d, z, h, s] = await Promise.all([
+        loadDevices(),
+        loadZones(),
+        loadHistory(),
+        loadSettings(),
+      ]);
+      setDevices(d);
+      setZones(z);
+      setHistory(h);
+      setBatterySaver(s.batterySaverMode);
+    })();
+  }, []);
+
+  // start foreground tracking and store history
+  useEffect(() => {
+    startForegroundTracking(async ({ location, history: updatedHistory }) => {
+      setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+      setHistory(updatedHistory);
+      await saveHistory(updatedHistory);
+    }).catch((err) => {
+      Alert.alert('Location Error', err.message);
+    });
+
+    return () => {
+      stopForegroundTracking();
+    };
+  }, []);
+
+  const handleRegister = async (device: Device) => {
+    const next = [...devices, device];
+    setDevices(next);
+    await saveDevices(next);
+  };
+
+  const handleAddZone = async (deviceId: string) => {
+    const baseDevice = devices.find((d) => d.id === deviceId);
+    if (!baseDevice) return;
+    const newZone: GeofenceZone = {
+      id: `${deviceId}-zone-${Date.now()}`,
+      deviceId,
+      name: 'Default Zone',
+      latitude: baseDevice.latitude,
+      longitude: baseDevice.longitude,
+      radius: 200,
+      type: 'warning',
+      enabled: true,
+      notificationSound: true,
+      notificationVibration: true,
+    };
+    const next = [...zones, newZone];
+    setZones(next);
+    await saveZones(next);
+  };
+
+  const handleToggleZone = async (zoneId: string) => {
+    const next = zones.map((z) => (z.id === zoneId ? { ...z, enabled: !z.enabled } : z));
+    setZones(next);
+    await saveZones(next);
+  };
+
+  const handleDeleteZone = async (zoneId: string) => {
+    const next = zones.filter((z) => z.id !== zoneId);
+    setZones(next);
+    await saveZones(next);
+  };
+
+  const handleSelectDevice = (deviceId: string) => {
+    setSelectedDeviceId(deviceId);
+  };
+
+  const filteredZones = useMemo(() => zones.filter((z) => z.deviceId === selectedDeviceId), [zones, selectedDeviceId]);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <ThemedText type="title" style={styles.pageTitle}>
+        GPS Tracking
+      </ThemedText>
+
+      <BatteryOptimizationBar
+        batteryLevel={batteryLevel}
+        trackingIntervalSec={trackingInterval}
+        storageSizeLabel={history.length ? `${history.length} pts` : undefined}
+        batterySaverEnabled={batterySaver}
+        onToggleSaver={() => setBatterySaver((v) => !v)}
+      />
+
+      <MapCard
+        userLocation={userLocation}
+        devices={devices}
+        zones={zones}
+        history={history}
+        selectedDeviceId={selectedDeviceId}
+      />
+
+      <DeviceRegistrationForm
+        devices={devices}
+        onRegister={handleRegister}
+        onSelectDevice={handleSelectDevice}
+      />
+
+      <ThemedView style={styles.panel}>
+        <View style={styles.rowBetween}>
+          <ThemedText type="subtitle">Zones</ThemedText>
+          {selectedDeviceId ? (
+            <ThemedText style={styles.meta}>Device: {selectedDeviceId}</ThemedText>
+          ) : (
+            <ThemedText style={styles.meta}>Select device to manage zones</ThemedText>
+          )}
+        </View>
+        {selectedDeviceId ? (
+          <>
+            {filteredZones.map((zone) => (
+              <View key={zone.id} style={{ marginBottom: 8 }}>
+                <View style={styles.zoneRow}>
+                  <ThemedText>{zone.name}</ThemedText>
+                  <View style={styles.zoneActions}>
+                    <ThemedText style={styles.action} onPress={() => handleToggleZone(zone.id)}>
+                      {zone.enabled ? 'Disable' : 'Enable'}
+                    </ThemedText>
+                    <ThemedText style={styles.delete} onPress={() => handleDeleteZone(zone.id)}>
+                      Delete
+                    </ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={styles.meta}>
+                  Radius {Math.round(zone.radius)} m • {zone.type}
+                </ThemedText>
+              </View>
+            ))}
+            <ThemedText style={styles.action} onPress={() => handleAddZone(selectedDeviceId)}>
+              + Add zone
+            </ThemedText>
+          </>
+        ) : (
+          <ThemedText style={styles.meta}>No device selected.</ThemedText>
+        )}
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+      <LocationHistoryPanel history={history} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    padding: 16,
+    gap: 12,
+  },
+  pageTitle: {
+    marginBottom: 4,
+  },
+  panel: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    gap: 8,
+  },
+  rowBetween: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  meta: {
+    color: Colors.light.textSecondary,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  action: {
+    color: Colors.light.tint,
+  },
+  delete: {
+    color: Colors.light.zoneCritical,
+  },
+  zoneRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  zoneActions: {
+    flexDirection: 'row',
+    gap: 12,
   },
 });
