@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 
-import { Colors } from '@/constants/theme';
+import { DeviceCard } from '@/components/device-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
 import { Device } from '@/types/models';
-import { DeviceCard } from '@/components/device-card';
 
 interface DeviceRegistrationFormProps {
   devices: Device[];

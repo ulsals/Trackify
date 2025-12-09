@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View, Alert } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BatteryOptimizationBar } from '@/components/battery-optimization-bar';
 import { DeviceRegistrationForm } from '@/components/device-registration-form';
@@ -8,10 +8,10 @@ import { MapCard } from '@/components/map-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
-import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
-import { loadDevices, loadHistory, loadSettings, loadZones, saveDevices, saveHistory, saveSettings, saveZones } from '@/services/storage-service';
-import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
 import { startForegroundTracking, stopForegroundTracking } from '@/services/location-tracking';
+import { loadDevices, loadHistory, loadSettings, loadZones, saveDevices, saveHistory, saveZones } from '@/services/storage-service';
+import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
+import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
 
 export default function HomeScreen() {
   const [devices, setDevices] = useState<Device[]>([]);

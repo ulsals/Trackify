@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppSettings, Device, GeofenceEvent, GeofenceZone, LocationHistoryPoint } from '@/types/models';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEYS = {
   devices: '@trackify/devices',

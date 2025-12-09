@@ -1,10 +1,10 @@
+import { GeofenceZone, LocationHistoryPoint } from '@/types/models';
+import { checkAllGeofences, getHighestPriorityBreach } from '@/utils/geofencing';
+import { addLocationToHistory } from '@/utils/location-history';
+import { sendGeofenceNotification } from '@/utils/notifications';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { AppState } from 'react-native';
-import { GeofenceZone, LocationHistoryPoint } from '@/types/models';
-import { addLocationToHistory } from '@/utils/location-history';
-import { checkAllGeofences, getHighestPriorityBreach } from '@/utils/geofencing';
-import { sendGeofenceNotification } from '@/utils/notifications';
 import { loadHistory, saveHistory } from './storage-service';
 
 export const LOCATION_TASK = 'TRACKIFY_LOCATION_TASK';

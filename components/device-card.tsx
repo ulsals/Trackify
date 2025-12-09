@@ -1,12 +1,12 @@
 import { StyleSheet, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 
-import { Colors } from '@/constants/theme';
+import { GeofenceZoneCard } from '@/components/geofence-zone-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { GeofenceZone, Device } from '@/types/models';
-import { formatDistance, calculateDistance } from '@/utils/distance';
-import { GeofenceZoneCard } from '@/components/geofence-zone-card';
+import { Colors } from '@/constants/theme';
+import { Device, GeofenceZone } from '@/types/models';
+import { calculateDistance, formatDistance } from '@/utils/distance';
 
 interface DeviceCardProps {
   device: Device;

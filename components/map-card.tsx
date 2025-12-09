@@ -1,10 +1,10 @@
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
+import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Colors } from '@/constants/theme';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { LocationHistoryPoint, Device, GeofenceZone } from '@/types/models';
 
 interface MapCardProps {
   userLocation?: { latitude: number; longitude: number };

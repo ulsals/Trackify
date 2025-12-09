@@ -1,8 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
 import { LocationHistoryPoint } from '@/types/models';
 import { formatDistance } from '@/utils/distance';
 import { calculateTotalDistance } from '@/utils/location-history';

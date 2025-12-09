@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 import { TouchableOpacity } from 'react-native-gesture-handler';
 
-import { Colors } from '@/constants/theme';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
 import { formatBatteryLevel, getBatteryColor } from '@/utils/battery-optimizer';
 
 interface BatteryOptimizationBarProps {

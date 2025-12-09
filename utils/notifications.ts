@@ -1,7 +1,7 @@
-import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import * as Haptics from 'expo-haptics';
 import { GeofenceZone } from '@/types/models';
+import * as Haptics from 'expo-haptics';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
