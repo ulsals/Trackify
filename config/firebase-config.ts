@@ -1,32 +1,52 @@
 /**
- * Firebase Configuration
- * Update these values with your Firebase project credentials from Google Cloud Console
+ * Firebase Configuration - Trackify 2025
+ * Project: Trackify-2025
+ * Project ID: trackify-2025-c29e3
+ * Project Number: 189142789486
  */
 
 export const firebaseConfig = {
-  apiKey: 'AIzaSyDemoKey123456789', // Replace with your Firebase API Key
-  authDomain: 'trackify-demo.firebaseapp.com',
-  projectId: 'trackify-demo', // Replace with your Firebase Project ID
-  storageBucket: 'trackify-demo.appspot.com',
-  messagingSenderId: '123456789012',
-  appId: '1:123456789012:web:abc123def456ghi789',
+  apiKey: 'AIzaSyA9IfSxjvE79QAXlfkn4Jotp_vQtnYonFA', // From google-services.json
+  authDomain: 'trackify-2025-c29e3.firebaseapp.com',
+  projectId: 'trackify-2025-c29e3',
+  storageBucket: 'trackify-2025-c29e3.firebasestorage.app',
+  messagingSenderId: '189142789486',
+  appId: '1:189142789486:android:e48c82111ed5453eda257f', // From google-services.json
 };
 
 /**
- * Instructions to set up Firebase:
+ * Quick Setup Instructions:
  * 
- * 1. Go to https://console.firebase.google.com
- * 2. Create a new project (or use existing)
- * 3. Go to Project Settings -> Service Accounts
- * 4. Copy the config values above
- * 5. Enable Firestore Database in Firebase Console
- * 6. Set Firestore rules for testing:
+ * 1. ✅ Firebase Project Created: Trackify-2025
+ * 2. ✅ Project ID: trackify-2025-c29e3
+ * 3. ✅ Cloud Messaging API Enabled
+ * 4. ✅ google-services.json added to android/app/
+ * 5. ✅ build.gradle.kts configured
+ * 6. ✅ API Key: AIzaSyA9IfSxjvE79QAXlfkn4Jotp_vQtnYonFA
+ * 7. ✅ App ID: 1:189142789486:android:e48c82111ed5453eda257f
+ * 
+ * Next Steps:
+ * 
+ * 8. Enable Firestore Database:
+ *    - Firebase Console -> Build -> Firestore Database
+ *    - Click "Create database"
+ *    - Choose "Test mode" for development
+ *    - Select region (asia-southeast1 recommended for Indonesia)
+ * 
+ * 9. Set Firestore Security Rules:
+ *    - In Firestore -> Rules tab, paste this:
+ *    
  *    rules_version = '2';
- *    match /databases/{database}/documents {
- *      match /devices/{deviceId}/locations/{document=**} {
- *        allow read, write: if true;
+ *    service cloud.firestore {
+ *      match /databases/{database}/documents {
+ *        match /devices/{deviceId}/locations/{document=**} {
+ *          allow read, write: if true;  // Open for testing
+ *        }
  *      }
  *    }
  * 
- * Note: For production, implement proper authentication/authorization
+ * 10. Rebuild Android App:
+ *    npx expo run:android
+ * 
+ * Note: For production, implement Firebase Authentication
  */

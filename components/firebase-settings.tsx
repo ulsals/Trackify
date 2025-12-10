@@ -4,6 +4,7 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getDefaultApiKey, getDefaultProjectId, isFirebaseConfigured } from '@/config/firebase-helper';
 import { Colors } from '@/constants/theme';
 
 interface FirebaseSettingsProps {
@@ -14,17 +15,29 @@ interface FirebaseSettingsProps {
 export function FirebaseSettings({ onConfigured, currentConfig }: FirebaseSettingsProps) {
   const [showForm, setShowForm] = useState(false);
   const [deviceId, setDeviceId] = useState(currentConfig?.deviceId ?? '');
-  const [projectId, setProjectId] = useState(currentConfig?.projectId ?? '');
-  const [apiKey, setApiKey] = useState(currentConfig?.apiKey ?? '');
+  const [projectId, setProjectId] = useState(currentConfig?.projectId ?? getDefaultProjectId());
+  const [apiKey, setApiKey] = useState(currentConfig?.apiKey ?? getDefaultApiKey());
 
   const handleSave = () => {
     if (!deviceId.trim() || !projectId.trim() || !apiKey.trim()) {
       Alert.alert('Error', 'All fields are required');
       return;
     }
+    
+    if (apiKey === 'YOUR_API_KEY_HERE') {
+      Alert.alert(
+        'API Key Required',
+        'Please get your API Key from Firebase Console. See GET_API_KEY.md for instructions.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     onConfigured?.({ deviceId, projectId, apiKey });
     setShowForm(false);
   };
+
+  const configuredInCode = isFirebaseConfigured();
 
   return (
     <ThemedView style={styles.container}>
@@ -47,22 +60,28 @@ export function FirebaseSettings({ onConfigured, currentConfig }: FirebaseSettin
 
       {showForm && (
         <View style={styles.form}>
+          <ThemedText style={styles.formHint}>
+            Project ID & API Key from Firebase Console (see GET_API_KEY.md)
+          </ThemedText>
           <TextInput
             placeholder="Device ID (unique name for this device)"
             value={deviceId}
             onChangeText={setDeviceId}
             style={styles.input}
             placeholderTextColor={Colors.light.textSecondary}
+            autoCapitalize="none"
           />
           <TextInput
-            placeholder="Firebase Project ID"
+            placeholder="Firebase Project ID (trackify-2025-c29e3)"
             value={projectId}
             onChangeText={setProjectId}
             style={styles.input}
             placeholderTextColor={Colors.light.textSecondary}
+            autoCapitalize="none"
+            editable={!configuredInCode}
           />
           <TextInput
-            placeholder="Firebase API Key"
+            placeholder="Firebase API Key (starts with AIzaSy...)"
             value={apiKey}
             onChangeText={setApiKey}
             style={styles.input}
@@ -116,6 +135,12 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 8,
+  },
+  formHint: {
+    color: Colors.light.tint,
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 4,
   },
   input: {
     borderWidth: 1,
