@@ -7,7 +7,7 @@
 const USE_MOCK_BACKEND = false;
 
 // Updated with HTTPS (required by Vercel)
-const VERCEL_BACKEND_URL = 'https://trackify-orcin.vercel.app';
+const VERCEL_BACKEND_URL = 'https://trackify_grd.vercel.app';
 
 // Local development (for `npx expo start`)
 const LOCAL_BACKEND_URL = 'http://localhost:3000';
