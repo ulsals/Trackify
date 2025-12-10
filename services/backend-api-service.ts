@@ -4,10 +4,10 @@
  */
 
 // 🔄 For local testing without backend, set this to true
-const USE_MOCK_BACKEND = true;
+const USE_MOCK_BACKEND = false;
 
-// TODO: Update this after deploying to Vercel
-const VERCEL_BACKEND_URL = 'https://trackify-backend.vercel.app';
+// Updated with HTTPS (required by Vercel)
+const VERCEL_BACKEND_URL = 'https://trackify-orcin.vercel.app';
 
 // Local development (for `npx expo start`)
 const LOCAL_BACKEND_URL = 'http://localhost:3000';
@@ -16,6 +16,12 @@ const LOCAL_BACKEND_URL = 'http://localhost:3000';
 const API_BASE_URL = __DEV__
   ? LOCAL_BACKEND_URL
   : VERCEL_BACKEND_URL;
+
+// Add request timeout configuration
+const REQUEST_TIMEOUT = 10000; // 10 seconds instead of 5
+
+// Tracking code expiration - 5 minutes
+const CODE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes = 300,000 ms
 
 // Mock device storage (for offline development)
 const mockDevices = new Map<string, { code: string; deviceSecret: string; deviceName: string; createdAt: number }>();
@@ -102,7 +108,7 @@ export async function createTrackingCode(deviceName: string): Promise<CreateShar
     setTimeout(() => {
       const code = generateMockCode();
       const deviceSecret = generateMockSecret();
-      const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+      const expiresAt = Date.now() + CODE_EXPIRATION_MS;
 
       // Store in mock storage
       mockDevices.set(code, {
@@ -159,12 +165,18 @@ export async function joinWithCode(code: string): Promise<JoinShareResponse> {
         return;
       }
 
+      // Check if code has expired (5 minutes)
+      if (Date.now() > device.createdAt + CODE_EXPIRATION_MS) {
+        reject(new Error('Code has expired'));
+        return;
+      }
+
       resolve({
         success: true,
         code,
         deviceName: device.deviceName,
         createdAt: device.createdAt,
-        expiresAt: device.createdAt + 24 * 60 * 60 * 1000,
+        expiresAt: device.createdAt + CODE_EXPIRATION_MS,
       });
     }, 300);
   });
@@ -183,6 +195,11 @@ export async function updateLocation(
   // Try backend first
   if (!USE_MOCK_BACKEND) {
     try {
+      console.log('📤 Uploading location to backend...', { code, latitude, longitude });
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
       const response = await fetch(`${API_BASE_URL}/api/location/update`, {
         method: 'POST',
         headers: {
@@ -195,17 +212,22 @@ export async function updateLocation(
           longitude,
           accuracy,
         }),
-        timeout: 5000,
+        signal: controller.signal,
       } as any);
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update location');
+        const errorText = await response.text();
+        console.warn('❌ Backend error:', response.status, errorText);
+        throw new Error(`Backend error: ${response.status}`);
       }
 
+      console.log('✅ Location uploaded successfully');
       return;
-    } catch (error) {
-      console.warn('Backend request failed, using mock:', error);
+    } catch (error: any) {
+      console.warn('⚠️ Backend request failed, using mock:', error?.message);
+      // Fall through to mock implementation
     }
   }
 
@@ -226,6 +248,7 @@ export async function updateLocation(
         timestamp: Date.now(),
       });
 
+      console.log('📍 Location stored in mock (demo mode)');
       resolve();
     }, 300);
   });
@@ -238,24 +261,35 @@ export async function getLocationByCode(code: string): Promise<LocationData | nu
   // Try backend first
   if (!USE_MOCK_BACKEND) {
     try {
+      console.log('📥 Fetching location from backend...', { code });
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
       const response = await fetch(`${API_BASE_URL}/api/location?code=${encodeURIComponent(code)}`, {
         method: 'GET',
-        timeout: 5000,
+        signal: controller.signal,
       } as any);
 
+      clearTimeout(timeoutId);
+
       if (response.status === 404) {
+        console.warn('⚠️ Location not found for code:', code);
         return null;
       }
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch location');
+        const errorText = await response.text();
+        console.warn('❌ Backend error:', response.status, errorText);
+        throw new Error(`Backend error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('✅ Location fetched successfully:', data);
       return data.location;
-    } catch (error) {
-      console.warn('Backend request failed, using mock:', error);
+    } catch (error: any) {
+      console.warn('⚠️ Backend request failed, using mock:', error?.message);
+      // Fall through to mock implementation
     }
   }
 
@@ -264,14 +298,15 @@ export async function getLocationByCode(code: string): Promise<LocationData | nu
     setTimeout(() => {
       const location = mockLocations.get(code);
       if (!location) {
+        console.log('📍 No location in mock storage for code:', code);
         resolve(null);
         return;
       }
-
+      console.log('📍 Location loaded from mock (demo mode):', location);
       resolve({
         ...location,
         updatedAt: location.timestamp,
       });
-    }, 200);
+    }, 300);
   });
 }

@@ -8,7 +8,7 @@ import { MapCard } from '@/components/map-card';
 import { ShareLocationButton } from '@/components/share-location-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TrackedDevice } from '@/components/tracked-devices-list';
+import { TrackedDevice, TrackedDevicesList } from '@/components/tracked-devices-list';
 import { Colors } from '@/constants/theme';
 import { getLocationByCode } from '@/services/backend-api-service';
 import { setBackendConfig, startBackgroundTracking, startForegroundTracking, stopBackgroundTracking, stopForegroundTracking } from '@/services/location-tracking';
@@ -171,6 +171,13 @@ export default function HomeScreen() {
 
       <JoinWithCode onJoined={handleJoined} />
 
+      <TrackedDevicesList
+        devices={trackedDevices}
+        onAddDevice={(code, name) => handleJoined(code, name)}
+        onRemoveDevice={handleRemoveTrackedDevice}
+        onRefresh={handleRefreshTrackedDevices}
+      />
+
       <MapCard
         userLocation={userLocation}
         devices={[]}
@@ -221,3 +228,4 @@ const styles = StyleSheet.create({
     color: Colors.light.zoneCritical,
   },
 });
+
