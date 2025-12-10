@@ -1,3 +1,4 @@
+import { uploadLocationToFirestore } from '@/services/firestore-service';
 import { GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { checkAllGeofences, getHighestPriorityBreach } from '@/utils/geofencing';
 import { addLocationToHistory } from '@/utils/location-history';
@@ -13,6 +14,17 @@ export type LocationUpdateHandler = (params: {
   location: Location.LocationObject;
   history: LocationHistoryPoint[];
 }) => void;
+
+// Firestore upload config (set by app at runtime)
+export let firestoreConfig: {
+  deviceId: string;
+  projectId: string;
+  apiKey: string;
+} | null = null;
+
+export function setFirestoreConfig(config: { deviceId: string; projectId: string; apiKey: string }) {
+  firestoreConfig = config;
+}
 
 let foregroundSubscription: Location.LocationSubscription | null = null;
 let locationHandler: LocationUpdateHandler | null = null;
@@ -41,6 +53,17 @@ async function handleLocation(location: Location.LocationObject) {
   };
   const updatedHistory = addLocationToHistory(currentHistory, point);
   await saveHistory(updatedHistory);
+  
+  // Auto-upload to Firestore if configured
+  if (firestoreConfig) {
+    await uploadLocationToFirestore(
+      firestoreConfig.deviceId,
+      firestoreConfig.projectId,
+      point,
+      firestoreConfig.apiKey
+    );
+  }
+  
   if (locationHandler) {
     locationHandler({ location, history: updatedHistory });
   }

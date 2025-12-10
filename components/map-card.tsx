@@ -6,12 +6,21 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+export interface TrackedDeviceLocation {
+  firestoreId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+}
+
 interface MapCardProps {
   userLocation?: { latitude: number; longitude: number };
   devices: Device[];
   zones: GeofenceZone[];
   history: LocationHistoryPoint[];
   selectedDeviceId?: string;
+  trackedDevices?: TrackedDeviceLocation[];
 }
 
 const leafletCdn = `
@@ -28,7 +37,7 @@ const leafletCdn = `
 
 const tileUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png';
 
-export function MapCard({ userLocation, devices, zones, history, selectedDeviceId }: MapCardProps) {
+export function MapCard({ userLocation, devices, zones, history, selectedDeviceId, trackedDevices = [] }: MapCardProps) {
   const html = useMemo(() => {
     const deviceMarkers = devices.map((d) => ({
       id: d.id,
@@ -52,6 +61,13 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
       lng: h.longitude,
       ts: h.timestamp,
     }));
+    const trackedMarkers = trackedDevices.map((d) => ({
+      firestoreId: d.firestoreId,
+      name: d.name,
+      lat: d.latitude,
+      lng: d.longitude,
+      ts: d.timestamp,
+    }));
     return `
       <!DOCTYPE html>
       <html>
@@ -70,8 +86,10 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
         <div id="map"></div>
         <div class="legend">
           <h4>Legend</h4>
+          <div><span class="dot" style="background:#1a73e8"></span><span>Your Location</span></div>
           <div><span class="dot" style="background:#4caf50"></span><span>Online Device</span></div>
           <div><span class="dot" style="background:#9e9e9e"></span><span>Offline Device</span></div>
+          <div><span class="dot" style="background:#ff6d00"></span><span>Tracked Device</span></div>
           <div><span class="dot" style="background:#2196f3"></span><span>History Path</span></div>
           <div><span class="dot" style="background:#f44336"></span><span>Last Known</span></div>
         </div>
@@ -83,6 +101,7 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
           const devices = ${JSON.stringify(deviceMarkers)};
           const zones = ${JSON.stringify(geoZones)};
           const history = ${JSON.stringify(historyPoints)};
+          const tracked = ${JSON.stringify(trackedMarkers)};
           const selectedId = ${selectedDeviceId ? JSON.stringify(selectedDeviceId) : 'null'};
 
           const markers = [];
@@ -126,6 +145,16 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
             zoneLayers.push(circle);
           });
 
+          tracked.forEach(t => {
+            const marker = L.circleMarker([t.lat, t.lng], {
+              radius: 9,
+              color: '#ff6d00',
+              fillColor: '#ff6d00',
+              fillOpacity: 0.85,
+            }).addTo(map).bindPopup(t.name + ' (Firestore)');
+            markers.push(marker);
+          });
+
           if (history.length > 1) {
             const latlngs = history.map(p => [p.lat, p.lng]);
             L.polyline(latlngs, { color: '#2196f3', weight: 3, opacity: 0.8 }).addTo(map);
@@ -148,7 +177,7 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
       </body>
       </html>
     `;
-  }, [devices, zones, history, userLocation, selectedDeviceId]);
+  }, [devices, zones, history, userLocation, selectedDeviceId, trackedDevices]);
 
   return (
     <ThemedView style={styles.container}>
