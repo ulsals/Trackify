@@ -1,4 +1,4 @@
-import { uploadLocationToFirestore } from '@/services/firestore-service';
+import { updateLocation } from '@/services/backend-api-service';
 import { GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { checkAllGeofences, getHighestPriorityBreach } from '@/utils/geofencing';
 import { addLocationToHistory } from '@/utils/location-history';
@@ -15,15 +15,14 @@ export type LocationUpdateHandler = (params: {
   history: LocationHistoryPoint[];
 }) => void;
 
-// Firestore upload config (set by app at runtime)
-export let firestoreConfig: {
-  deviceId: string;
-  projectId: string;
-  apiKey: string;
+// Backend config (tracking code and device secret)
+export let backendConfig: {
+  trackingCode: string;
+  deviceSecret: string;
 } | null = null;
 
-export function setFirestoreConfig(config: { deviceId: string; projectId: string; apiKey: string }) {
-  firestoreConfig = config;
+export function setBackendConfig(config: { trackingCode: string; deviceSecret: string }) {
+  backendConfig = config;
 }
 
 let foregroundSubscription: Location.LocationSubscription | null = null;
@@ -54,14 +53,19 @@ async function handleLocation(location: Location.LocationObject) {
   const updatedHistory = addLocationToHistory(currentHistory, point);
   await saveHistory(updatedHistory);
   
-  // Auto-upload to Firestore if configured
-  if (firestoreConfig) {
-    await uploadLocationToFirestore(
-      firestoreConfig.deviceId,
-      firestoreConfig.projectId,
-      point,
-      firestoreConfig.apiKey
-    );
+  // Auto-upload to backend if configured
+  if (backendConfig) {
+    try {
+      await updateLocation(
+        backendConfig.trackingCode,
+        backendConfig.deviceSecret,
+        point.latitude,
+        point.longitude,
+        point.accuracy ?? 0
+      );
+    } catch (error) {
+      console.warn('Failed to upload location to backend:', error);
+    }
   }
   
   if (locationHandler) {

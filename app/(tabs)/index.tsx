@@ -2,15 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BatteryOptimizationBar } from '@/components/battery-optimization-bar';
-import { FirebaseSettings } from '@/components/firebase-settings';
+import { JoinWithCode } from '@/components/join-with-code';
 import { LocationHistoryPanel } from '@/components/location-history-panel';
 import { MapCard } from '@/components/map-card';
+import { ShareLocationButton } from '@/components/share-location-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { TrackedDevice, TrackedDevicesList } from '@/components/tracked-devices-list';
+import { TrackedDevice } from '@/components/tracked-devices-list';
 import { Colors } from '@/constants/theme';
-import { fetchDeviceLocation } from '@/services/firestore-service';
-import { setFirestoreConfig, startBackgroundTracking, startForegroundTracking, stopBackgroundTracking, stopForegroundTracking } from '@/services/location-tracking';
+import { getLocationByCode } from '@/services/backend-api-service';
+import { setBackendConfig, startBackgroundTracking, startForegroundTracking, stopBackgroundTracking, stopForegroundTracking } from '@/services/location-tracking';
 import { clearHistory, loadHistory, loadSettings, saveHistory } from '@/services/storage-service';
 import { LocationHistoryPoint } from '@/types/models';
 import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
@@ -21,7 +22,6 @@ export default function HomeScreen() {
   const [batteryLevel, setBatteryLevel] = useState<number | undefined>(undefined);
   const [batterySaver, setBatterySaver] = useState(true);
   const [backgroundTracking, setBackgroundTracking] = useState(false);
-  const [firestoreConfig, setFirestoreConfigState] = useState<{ deviceId: string; projectId: string; apiKey: string } | null>(null);
   const [trackedDevices, setTrackedDevices] = useState<TrackedDevice[]>([]);
   const trackingInterval = useMemo(() => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver), [batteryLevel, batterySaver]);
 
@@ -68,8 +68,6 @@ export default function HomeScreen() {
     }
   };
 
-
-
   const handleClearHistory = async () => {
     Alert.alert(
       'Clear Location History',
@@ -88,47 +86,53 @@ export default function HomeScreen() {
     );
   };
 
-  const handleConfigureFirebase = (config: { deviceId: string; projectId: string; apiKey: string }) => {
-    setFirestoreConfigState(config);
-    setFirestoreConfig(config);
-    Alert.alert('Success', 'Firebase configured. Location will be uploaded every 90 seconds.');
+  const handleShared = (code: string, deviceSecret: string) => {
+    setBackendConfig({ trackingCode: code, deviceSecret });
   };
 
-  const handleAddTrackedDevice = (firestoreId: string, name: string) => {
-    if (trackedDevices.some((d) => d.firestoreId === firestoreId)) {
+  const handleJoined = async (code: string, deviceName: string) => {
+    if (trackedDevices.some((d) => d.firestoreId === code)) {
       Alert.alert('Error', 'Device already in tracking list');
       return;
     }
-    setTrackedDevices([...trackedDevices, { firestoreId, name }]);
+    
+    try {
+      // Try to fetch location immediately
+      const location = await getLocationByCode(code);
+      setTrackedDevices([...trackedDevices, {
+        firestoreId: code,
+        name: deviceName,
+        lastLocation: location ? {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timestamp: location.timestamp,
+        } : undefined,
+      }]);
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
   };
 
-  const handleRemoveTrackedDevice = (firestoreId: string) => {
-    setTrackedDevices(trackedDevices.filter((d) => d.firestoreId !== firestoreId));
+  const handleRemoveTrackedDevice = (code: string) => {
+    setTrackedDevices(trackedDevices.filter((d) => d.firestoreId !== code));
   };
 
   const handleRefreshTrackedDevices = async () => {
-    if (!firestoreConfig) {
-      Alert.alert('Error', 'Firebase not configured');
-      return;
-    }
-
     const updated = await Promise.all(
       trackedDevices.map(async (device) => {
-        const location = await fetchDeviceLocation(
-          device.firestoreId,
-          firestoreConfig.projectId,
-          firestoreConfig.apiKey
-        );
-        return {
-          ...device,
-          lastLocation: location
-            ? {
-                latitude: location.latitude,
-                longitude: location.longitude,
-                timestamp: location.timestamp,
-              }
-            : undefined,
-        };
+        try {
+          const location = await getLocationByCode(device.firestoreId);
+          return {
+            ...device,
+            lastLocation: location ? {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              timestamp: location.timestamp,
+            } : undefined,
+          };
+        } catch (error) {
+          return device;
+        }
       })
     );
     setTrackedDevices(updated);
@@ -146,9 +150,7 @@ export default function HomeScreen() {
         storageSizeLabel={history.length ? `${history.length} pts` : undefined}
         batterySaverEnabled={batterySaver}
         onToggleSaver={() => setBatterySaver((v) => !v)}
-      />
-
-      <ThemedView style={styles.panel}>
+      />      <ThemedView style={styles.panel}>
         <View style={styles.rowBetween}>
           <ThemedText type="subtitle">Background tracking</ThemedText>
           <ThemedText
@@ -164,6 +166,10 @@ export default function HomeScreen() {
             : 'Start to continue tracking when the app is not active.'}
         </ThemedText>
       </ThemedView>
+
+      <ShareLocationButton onShared={handleShared} />
+
+      <JoinWithCode onJoined={handleJoined} />
 
       <MapCard
         userLocation={userLocation}
@@ -181,17 +187,6 @@ export default function HomeScreen() {
       />
 
       <LocationHistoryPanel history={history} onClearHistory={handleClearHistory} />
-
-      <FirebaseSettings onConfigured={handleConfigureFirebase} currentConfig={firestoreConfig} />
-
-      <TrackedDevicesList
-        devices={trackedDevices}
-        projectId={firestoreConfig?.projectId}
-        apiKey={firestoreConfig?.apiKey}
-        onAddDevice={handleAddTrackedDevice}
-        onRemoveDevice={handleRemoveTrackedDevice}
-        onRefresh={handleRefreshTrackedDevices}
-      />
     </ScrollView>
   );
 }
