@@ -13,6 +13,7 @@ interface DeviceCardProps {
   zones: GeofenceZone[];
   userLocation?: { latitude: number; longitude: number };
   onSelect?: (deviceId: string) => void;
+  onDelete?: (deviceId: string) => void;
   onAddZone?: (deviceId: string) => void;
   onToggleZone?: (zoneId: string) => void;
   onDeleteZone?: (zoneId: string) => void;
@@ -23,6 +24,7 @@ export function DeviceCard({
   zones,
   userLocation,
   onSelect,
+  onDelete,
   onAddZone,
   onToggleZone,
   onDeleteZone,
@@ -49,9 +51,14 @@ export function DeviceCard({
             {device.name || device.id}
           </ThemedText>
         </View>
-        <TouchableOpacity onPress={() => onSelect?.(device.id)}>
-          <ThemedText style={styles.action}>Track</ThemedText>
-        </TouchableOpacity>
+        <View style={styles.actions}>
+          <TouchableOpacity onPress={() => onSelect?.(device.id)}>
+            <ThemedText style={styles.action}>Track</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => onDelete?.(device.id)}>
+            <ThemedText style={styles.delete}>Delete</ThemedText>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ThemedText style={styles.meta}>Distance: {distance}</ThemedText>
@@ -96,6 +103,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  actions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -115,6 +126,9 @@ const styles = StyleSheet.create({
   },
   action: {
     color: Colors.light.tint,
+  },
+  delete: {
+    color: Colors.light.zoneCritical,
   },
   zoneHeader: {
     flexDirection: 'row',

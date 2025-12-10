@@ -12,12 +12,14 @@ interface DeviceRegistrationFormProps {
   devices: Device[];
   onRegister: (device: Device) => void;
   onSelectDevice: (deviceId: string) => void;
+  onDeleteDevice?: (deviceId: string) => void;
 }
 
 export function DeviceRegistrationForm({
   devices,
   onRegister,
   onSelectDevice,
+  onDeleteDevice,
 }: DeviceRegistrationFormProps) {
   const [id, setId] = useState('');
   const [name, setName] = useState('');
@@ -96,6 +98,7 @@ export function DeviceRegistrationForm({
             device={d}
             zones={[]}
             onSelect={onSelectDevice}
+            onDelete={onDeleteDevice}
             userLocation={undefined}
             onAddZone={() => onSelectDevice(d.id)}
             onToggleZone={() => undefined}

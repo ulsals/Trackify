@@ -70,3 +70,7 @@ export async function loadGeofenceEvents(): Promise<GeofenceEvent[]> {
 export async function saveGeofenceEvents(events: GeofenceEvent[]): Promise<void> {
   return setJSON(KEYS.geofenceEvents, events);
 }
+
+export async function clearHistory(): Promise<void> {
+  return saveHistory([]);
+}

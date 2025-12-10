@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { TouchableOpacity } from 'react-native-gesture-handler';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,14 +10,22 @@ import { calculateTotalDistance } from '@/utils/location-history';
 
 interface LocationHistoryPanelProps {
   history: LocationHistoryPoint[];
+  onClearHistory?: () => void;
 }
 
-export function LocationHistoryPanel({ history }: LocationHistoryPanelProps) {
+export function LocationHistoryPanel({ history, onClearHistory }: LocationHistoryPanelProps) {
   const totalDistance = calculateTotalDistance(history);
 
   return (
     <ThemedView style={styles.panel}>
-      <ThemedText type="defaultSemiBold">Historical Location</ThemedText>
+      <View style={styles.header}>
+        <ThemedText type="defaultSemiBold">Historical Location</ThemedText>
+        {history.length > 0 && (
+          <TouchableOpacity onPress={onClearHistory}>
+            <ThemedText style={styles.clearButton}>Clear</ThemedText>
+          </TouchableOpacity>
+        )}
+      </View>
       <ThemedText style={styles.meta}>
         Points: {history.length} • Traveled: {formatDistance(totalDistance)}
       </ThemedText>
@@ -40,6 +49,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.light.border,
     gap: 6,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  clearButton: {
+    color: Colors.light.zoneCritical,
   },
   meta: {
     color: Colors.light.textSecondary,

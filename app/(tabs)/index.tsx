@@ -9,7 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { startBackgroundTracking, startForegroundTracking, stopBackgroundTracking, stopForegroundTracking } from '@/services/location-tracking';
-import { loadDevices, loadHistory, loadSettings, loadZones, saveDevices, saveHistory, saveZones } from '@/services/storage-service';
+import { clearHistory, loadDevices, loadHistory, loadSettings, loadZones, saveDevices, saveHistory, saveZones } from '@/services/storage-service';
 import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
 
@@ -101,6 +101,29 @@ export default function HomeScreen() {
     }
   };
 
+  const handleDeleteDevice = async (deviceId: string) => {
+    Alert.alert(
+      'Delete Device',
+      'Are you sure? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const next = devices.filter((d) => d.id !== deviceId);
+            setDevices(next);
+            await saveDevices(next);
+            // Remove zones for this device too
+            const nextZones = zones.filter((z) => z.deviceId !== deviceId);
+            setZones(nextZones);
+            await saveZones(nextZones);
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteZone = async (zoneId: string) => {
     const next = zones.filter((z) => z.id !== zoneId);
     setZones(next);
@@ -109,6 +132,24 @@ export default function HomeScreen() {
 
   const handleSelectDevice = (deviceId: string) => {
     setSelectedDeviceId(deviceId);
+  };
+
+  const handleClearHistory = async () => {
+    Alert.alert(
+      'Clear Location History',
+      'Delete all recorded location points? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            await clearHistory();
+            setHistory([]);
+          },
+        },
+      ]
+    );
   };
 
   const filteredZones = useMemo(() => zones.filter((z) => z.deviceId === selectedDeviceId), [zones, selectedDeviceId]);
@@ -156,6 +197,7 @@ export default function HomeScreen() {
         devices={devices}
         onRegister={handleRegister}
         onSelectDevice={handleSelectDevice}
+        onDeleteDevice={handleDeleteDevice}
       />
 
       <ThemedView style={styles.panel}>
@@ -196,7 +238,7 @@ export default function HomeScreen() {
         )}
       </ThemedView>
 
-      <LocationHistoryPanel history={history} />
+      <LocationHistoryPanel history={history} onClearHistory={handleClearHistory} />
     </ScrollView>
   );
 }

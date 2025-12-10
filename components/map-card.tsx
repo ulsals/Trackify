@@ -60,8 +60,8 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
         ${leafletCdn}
         <style>
           html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #fff; }
-          .legend { position: absolute; bottom: 12px; left: 12px; background: rgba(255,255,255,0.9); padding: 8px 10px; border-radius: 8px; font-family: sans-serif; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-          .legend h4 { margin: 0 0 6px 0; font-size: 12px; }
+          .legend { position: absolute; bottom: 50px; right: 12px; background: rgba(255,255,255,0.95); padding: 10px 12px; border-radius: 8px; font-family: sans-serif; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 140px; }
+          .legend h4 { margin: 0 0 6px 0; font-size: 12px; font-weight: 600; }
           .legend div { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
           .dot { width: 10px; height: 10px; border-radius: 50%; }
         </style>
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   mapWrapper: {
-    height: 280,
+    height: 360,
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
