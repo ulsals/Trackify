@@ -47,10 +47,21 @@ async function handleLocation(location: Location.LocationObject) {
 }
 
 export async function requestPermissions(): Promise<boolean> {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== 'granted') return false;
-  const bg = await Location.requestBackgroundPermissionsAsync();
-  return bg.status === 'granted';
+  const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+  if (status !== 'granted') {
+    console.warn('Foreground location not granted', { status, canAskAgain });
+    return false;
+  }
+  return true;
+}
+
+async function requestBackgroundPermission(): Promise<boolean> {
+  const { status, canAskAgain } = await Location.requestBackgroundPermissionsAsync();
+  if (status !== 'granted') {
+    console.warn('Background location not granted', { status, canAskAgain });
+    return false;
+  }
+  return true;
 }
 
 export async function startForegroundTracking(handler: LocationUpdateHandler) {
@@ -79,8 +90,10 @@ export async function stopForegroundTracking() {
 export async function startBackgroundTracking() {
   const isRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK);
   if (!isRegistered) {
-    const granted = await requestPermissions();
-    if (!granted) return;
+    const foregroundGranted = await requestPermissions();
+    if (!foregroundGranted) return;
+    const backgroundGranted = await requestBackgroundPermission();
+    if (!backgroundGranted) return;
     await Location.startLocationUpdatesAsync(LOCATION_TASK, {
       accuracy: Location.Accuracy.Balanced,
       distanceInterval: 10,

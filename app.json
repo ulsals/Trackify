@@ -25,8 +25,7 @@
         "BLUETOOTH",
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_CONNECT",
-        "BLUETOOTH_SCAN",
-        "ACCESS_FINE_LOCATION"
+        "BLUETOOTH_SCAN"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

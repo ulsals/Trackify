@@ -8,7 +8,7 @@ import { MapCard } from '@/components/map-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
-import { startForegroundTracking, stopForegroundTracking } from '@/services/location-tracking';
+import { startBackgroundTracking, startForegroundTracking, stopBackgroundTracking, stopForegroundTracking } from '@/services/location-tracking';
 import { loadDevices, loadHistory, loadSettings, loadZones, saveDevices, saveHistory, saveZones } from '@/services/storage-service';
 import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
@@ -21,6 +21,7 @@ export default function HomeScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>();
   const [batteryLevel, setBatteryLevel] = useState<number | undefined>(undefined);
   const [batterySaver, setBatterySaver] = useState(true);
+  const [backgroundTracking, setBackgroundTracking] = useState(false);
   const trackingInterval = useMemo(() => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver), [batteryLevel, batterySaver]);
 
   // load persisted data
@@ -86,6 +87,20 @@ export default function HomeScreen() {
     await saveZones(next);
   };
 
+  const handleToggleBackground = async () => {
+    try {
+      if (backgroundTracking) {
+        await stopBackgroundTracking();
+        setBackgroundTracking(false);
+      } else {
+        await startBackgroundTracking();
+        setBackgroundTracking(true);
+      }
+    } catch (err: any) {
+      Alert.alert('Background tracking', err?.message ?? 'Failed to toggle background tracking');
+    }
+  };
+
   const handleDeleteZone = async (zoneId: string) => {
     const next = zones.filter((z) => z.id !== zoneId);
     setZones(next);
@@ -111,6 +126,23 @@ export default function HomeScreen() {
         batterySaverEnabled={batterySaver}
         onToggleSaver={() => setBatterySaver((v) => !v)}
       />
+
+      <ThemedView style={styles.panel}>
+        <View style={styles.rowBetween}>
+          <ThemedText type="subtitle">Background tracking</ThemedText>
+          <ThemedText
+            style={styles.action}
+            onPress={handleToggleBackground}
+          >
+            {backgroundTracking ? 'Stop' : 'Start'}
+          </ThemedText>
+        </View>
+        <ThemedText style={styles.meta}>
+          {backgroundTracking
+            ? 'Running in background when permission is granted.'
+            : 'Start to continue tracking when the app is not active.'}
+        </ThemedText>
+      </ThemedView>
 
       <MapCard
         userLocation={userLocation}
