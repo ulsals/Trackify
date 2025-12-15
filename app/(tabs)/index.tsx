@@ -1,7 +1,7 @@
 import { BatteryOptimizationBar } from "@/components/battery-optimization-bar";
+import { DeviceCodeDisplay } from "@/components/device-code-display";
 import { LocationHistoryPanel } from "@/components/location-history-panel";
 import { MapCard } from "@/components/map-card";
-import { ShareLocationButton } from "@/components/share-location-button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import {
@@ -41,7 +41,6 @@ export default function HomeScreen() {
   const [batterySaver, setBatterySaver] = useState(true);
   const [backgroundTracking, setBackgroundTracking] = useState(false);
   const [trackedDevices, setTrackedDevices] = useState<TrackedDevice[]>([]);
-  const [isSharing, setIsSharing] = useState(false);
   const trackingInterval = useMemo(
     () => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver),
     [batteryLevel, batterySaver]
@@ -128,12 +127,6 @@ export default function HomeScreen() {
         },
       ]
     );
-  };
-
-  const handleShared = (code: string, deviceSecret: string) => {
-    // Set tracking config untuk auto-upload ke Firestore
-    setTrackingConfig({ deviceCode: code, deviceSecret });
-    setIsSharing(true);
   };
 
   const handleJoined = async (code: string, deviceName: string) => {
@@ -232,7 +225,7 @@ export default function HomeScreen() {
           </ThemedText>
         </ThemedView>
 
-        <ShareLocationButton onShared={handleShared} />
+        <DeviceCodeDisplay />
 
         <TrackedDevicesList
           devices={trackedDevices}
