@@ -11,11 +11,10 @@ import {
 import { Colors } from "@/constants/theme";
 import { getLocationByCode } from "@/services/backend-api-service";
 import {
-    setTrackingConfig,
     startBackgroundTracking,
     startForegroundTracking,
     stopBackgroundTracking,
-    stopForegroundTracking,
+    stopForegroundTracking
 } from "@/services/location-tracking";
 import {
     clearHistory,
