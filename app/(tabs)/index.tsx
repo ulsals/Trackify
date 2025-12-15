@@ -16,6 +16,7 @@ import {
     stopBackgroundTracking,
     stopForegroundTracking,
 } from "@/services/location-tracking";
+import { getLocationByCode } from "@/services/backend-api-service";
 import {
     clearHistory,
     loadHistory,
