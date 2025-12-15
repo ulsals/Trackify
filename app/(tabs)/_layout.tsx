@@ -1,8 +1,8 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { MaterialIcons } from '@expo/vector-icons'; // Menggunakan icon bawaan Expo yang pasti ada
 
 import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -16,18 +16,28 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
+      
+      {/* --- TAB KIRI: GPS (Mengarah ke index.tsx) --- */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'GPS',
+          // Menggunakan MaterialIcons 'location-on' (Icon Pin Lokasi)
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons size={28} name="location-on" color={color} />
+          ),
         }}
       />
+
+      {/* --- TAB KANAN: Bluetooth (Mengarah ke bluetooth.tsx) --- */}
       <Tabs.Screen
-        name="explore"
+        name="bluetooth"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Bluetooth',
+          // Menggunakan MaterialIcons 'bluetooth' (Icon Logo Bluetooth)
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons size={28} name="bluetooth" color={color} />
+          ),
         }}
       />
     </Tabs>

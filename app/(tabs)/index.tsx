@@ -1,37 +1,57 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from "react";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { BatteryOptimizationBar } from '@/components/battery-optimization-bar';
-import { JoinWithCode } from '@/components/join-with-code';
-import { LocationHistoryPanel } from '@/components/location-history-panel';
-import { MapCard } from '@/components/map-card';
-import { ShareLocationButton } from '@/components/share-location-button';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { TrackedDevice, TrackedDevicesList } from '@/components/tracked-devices-list';
-import { Colors } from '@/constants/theme';
-import { getLocationByCode } from '@/services/backend-api-service';
-import { setBackendConfig, startBackgroundTracking, startForegroundTracking, stopBackgroundTracking, stopForegroundTracking } from '@/services/location-tracking';
-import { clearHistory, loadHistory, loadSettings, saveHistory } from '@/services/storage-service';
-import { LocationHistoryPoint } from '@/types/models';
-import { getOptimalTrackingInterval } from '@/utils/battery-optimizer';
+import { BatteryOptimizationBar } from "@/components/battery-optimization-bar";
+import { JoinWithCode } from "@/components/join-with-code";
+import { LocationHistoryPanel } from "@/components/location-history-panel";
+import { MapCard } from "@/components/map-card";
+import { ShareLocationButton } from "@/components/share-location-button";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import {
+  TrackedDevice,
+  TrackedDevicesList,
+} from "@/components/tracked-devices-list";
+import { Colors } from "@/constants/theme";
+import { getLocationByCode } from "@/services/backend-api-service";
+import {
+  setBackendConfig,
+  startBackgroundTracking,
+  startForegroundTracking,
+  stopBackgroundTracking,
+  stopForegroundTracking,
+} from "@/services/location-tracking";
+import {
+  clearHistory,
+  loadHistory,
+  loadSettings,
+  saveHistory,
+} from "@/services/storage-service";
+import { LocationHistoryPoint } from "@/types/models";
+import { getOptimalTrackingInterval } from "@/utils/battery-optimizer";
 
 export default function HomeScreen() {
   const [history, setHistory] = useState<LocationHistoryPoint[]>([]);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number }>();
-  const [batteryLevel, setBatteryLevel] = useState<number | undefined>(undefined);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  }>();
+  const [batteryLevel, setBatteryLevel] = useState<number | undefined>(
+    undefined
+  );
   const [batterySaver, setBatterySaver] = useState(true);
   const [backgroundTracking, setBackgroundTracking] = useState(false);
   const [trackedDevices, setTrackedDevices] = useState<TrackedDevice[]>([]);
-  const trackingInterval = useMemo(() => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver), [batteryLevel, batterySaver]);
+  const trackingInterval = useMemo(
+    () => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver),
+    [batteryLevel, batterySaver]
+  );
 
   // load persisted data
   useEffect(() => {
     (async () => {
-      const [h, s] = await Promise.all([
-        loadHistory(),
-        loadSettings(),
-      ]);
+      const [h, s] = await Promise.all([loadHistory(), loadSettings()]);
       setHistory(h);
       setBatterySaver(s.batterySaverMode);
     })();
@@ -40,19 +60,20 @@ export default function HomeScreen() {
   // start foreground tracking and store history
   useEffect(() => {
     startForegroundTracking(async ({ location, history: updatedHistory }) => {
-      setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
       setHistory(updatedHistory);
       await saveHistory(updatedHistory);
     }).catch((err) => {
-      Alert.alert('Location Error', err.message);
+      Alert.alert("Location Error", err.message);
     });
 
     return () => {
       stopForegroundTracking();
     };
   }, []);
-
-
 
   const handleToggleBackground = async () => {
     try {
@@ -64,19 +85,22 @@ export default function HomeScreen() {
         setBackgroundTracking(true);
       }
     } catch (err: any) {
-      Alert.alert('Background tracking', err?.message ?? 'Failed to toggle background tracking');
+      Alert.alert(
+        "Background tracking",
+        err?.message ?? "Failed to toggle background tracking"
+      );
     }
   };
 
   const handleClearHistory = async () => {
     Alert.alert(
-      'Clear Location History',
-      'Delete all recorded location points? This cannot be undone.',
+      "Clear Location History",
+      "Delete all recorded location points? This cannot be undone.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Clear',
-          style: 'destructive',
+          text: "Clear",
+          style: "destructive",
           onPress: async () => {
             await clearHistory();
             setHistory([]);
@@ -92,24 +116,29 @@ export default function HomeScreen() {
 
   const handleJoined = async (code: string, deviceName: string) => {
     if (trackedDevices.some((d) => d.firestoreId === code)) {
-      Alert.alert('Error', 'Device already in tracking list');
+      Alert.alert("Error", "Device already in tracking list");
       return;
     }
-    
+
     try {
       // Try to fetch location immediately
       const location = await getLocationByCode(code);
-      setTrackedDevices([...trackedDevices, {
-        firestoreId: code,
-        name: deviceName,
-        lastLocation: location ? {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          timestamp: location.timestamp,
-        } : undefined,
-      }]);
+      setTrackedDevices([
+        ...trackedDevices,
+        {
+          firestoreId: code,
+          name: deviceName,
+          lastLocation: location
+            ? {
+                latitude: location.latitude,
+                longitude: location.longitude,
+                timestamp: location.timestamp,
+              }
+            : undefined,
+        },
+      ]);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert("Error", error.message);
     }
   };
 
@@ -124,11 +153,13 @@ export default function HomeScreen() {
           const location = await getLocationByCode(device.firestoreId);
           return {
             ...device,
-            lastLocation: location ? {
-              latitude: location.latitude,
-              longitude: location.longitude,
-              timestamp: location.timestamp,
-            } : undefined,
+            lastLocation: location
+              ? {
+                  latitude: location.latitude,
+                  longitude: location.longitude,
+                  timestamp: location.timestamp,
+                }
+              : undefined,
           };
         } catch (error) {
           return device;
@@ -139,62 +170,67 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ThemedText type="title" style={styles.pageTitle}>
-        GPS Tracking
-      </ThemedText>
-
-      <BatteryOptimizationBar
-        batteryLevel={batteryLevel}
-        trackingIntervalSec={trackingInterval}
-        storageSizeLabel={history.length ? `${history.length} pts` : undefined}
-        batterySaverEnabled={batterySaver}
-        onToggleSaver={() => setBatterySaver((v) => !v)}
-      />      <ThemedView style={styles.panel}>
-        <View style={styles.rowBetween}>
-          <ThemedText type="subtitle">Background tracking</ThemedText>
-          <ThemedText
-            style={styles.action}
-            onPress={handleToggleBackground}
-          >
-            {backgroundTracking ? 'Stop' : 'Start'}
-          </ThemedText>
-        </View>
-        <ThemedText style={styles.meta}>
-          {backgroundTracking
-            ? 'Running in background when permission is granted.'
-            : 'Start to continue tracking when the app is not active.'}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <ThemedText type="title" style={styles.pageTitle}>
+          GPS Tracking
         </ThemedText>
-      </ThemedView>
 
-      <ShareLocationButton onShared={handleShared} />
+        <BatteryOptimizationBar
+          batteryLevel={batteryLevel}
+          trackingIntervalSec={trackingInterval}
+          storageSizeLabel={
+            history.length ? `${history.length} pts` : undefined
+          }
+          batterySaverEnabled={batterySaver}
+          onToggleSaver={() => setBatterySaver((v) => !v)}
+        />
+        <ThemedView style={styles.panel}>
+          <View style={styles.rowBetween}>
+            <ThemedText type="subtitle">Background tracking</ThemedText>
+            <ThemedText style={styles.action} onPress={handleToggleBackground}>
+              {backgroundTracking ? "Stop" : "Start"}
+            </ThemedText>
+          </View>
+          <ThemedText style={styles.meta}>
+            {backgroundTracking
+              ? "Running in background when permission is granted."
+              : "Start to continue tracking when the app is not active."}
+          </ThemedText>
+        </ThemedView>
 
-      <JoinWithCode onJoined={handleJoined} />
+        <ShareLocationButton onShared={handleShared} />
 
-      <TrackedDevicesList
-        devices={trackedDevices}
-        onAddDevice={(code, name) => handleJoined(code, name)}
-        onRemoveDevice={handleRemoveTrackedDevice}
-        onRefresh={handleRefreshTrackedDevices}
-      />
+        <JoinWithCode onJoined={handleJoined} />
 
-      <MapCard
-        userLocation={userLocation}
-        devices={[]}
-        zones={[]}
-        history={history}
-        selectedDeviceId={undefined}
-        trackedDevices={trackedDevices.map(d => ({
-          firestoreId: d.firestoreId,
-          name: d.name,
-          latitude: d.lastLocation?.latitude ?? 0,
-          longitude: d.lastLocation?.longitude ?? 0,
-          timestamp: d.lastLocation?.timestamp ?? 0,
-        }))}
-      />
+        <TrackedDevicesList
+          devices={trackedDevices}
+          onAddDevice={(code, name) => handleJoined(code, name)}
+          onRemoveDevice={handleRemoveTrackedDevice}
+          onRefresh={handleRefreshTrackedDevices}
+        />
 
-      <LocationHistoryPanel history={history} onClearHistory={handleClearHistory} />
-    </ScrollView>
+        <MapCard
+          userLocation={userLocation}
+          devices={[]}
+          zones={[]}
+          history={history}
+          selectedDeviceId={undefined}
+          trackedDevices={trackedDevices.map((d) => ({
+            firestoreId: d.firestoreId,
+            name: d.name,
+            latitude: d.lastLocation?.latitude ?? 0,
+            longitude: d.lastLocation?.longitude ?? 0,
+            timestamp: d.lastLocation?.timestamp ?? 0,
+          }))}
+        />
+
+        <LocationHistoryPanel
+          history={history}
+          onClearHistory={handleClearHistory}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -214,9 +250,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   meta: {
     color: Colors.light.textSecondary,
@@ -228,4 +264,3 @@ const styles = StyleSheet.create({
     color: Colors.light.zoneCritical,
   },
 });
-
