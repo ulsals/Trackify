@@ -2,8 +2,11 @@ import * as Location from "expo-location";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { Alert, PermissionsAndroid, Platform } from "react-native";
+import { useFirestoreSync } from "./use-firestore-sync";
 
 export const useLocationAndNotification = () => {
+  const { uploadLocation } = useFirestoreSync();
+
   // Setup Handler Notifikasi
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -58,6 +61,14 @@ export const useLocationAndNotification = () => {
         const addr = addresses[0];
         addressText = `${addr.street || addr.name || ""}, ${addr.district || ""}`.replace(/^, /, "");
       }
+
+      // Upload to Firebase Firestore
+      await uploadLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        timestamp: loc.timestamp,
+        accuracy: loc.coords.accuracy,
+      });
 
       return {
         latitude: loc.coords.latitude,

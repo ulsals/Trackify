@@ -1,28 +1,59 @@
-import { updateLocation } from '@/services/backend-api-service';
+import { getDefaultApiKey, getDefaultProjectId } from '@/config/firebase-helper';
+import { uploadLocationByCode } from '@/services/firestore-service';
 import { GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { checkAllGeofences, getHighestPriorityBreach } from '@/utils/geofencing';
 import { addLocationToHistory } from '@/utils/location-history';
 import { sendGeofenceNotification } from '@/utils/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { AppState } from 'react-native';
 import { loadHistory, saveHistory } from './storage-service';
 
 export const LOCATION_TASK = 'TRACKIFY_LOCATION_TASK';
+const STORAGE_KEY_DEVICE_CODE = '@trackify/device_code';
 
 export type LocationUpdateHandler = (params: {
   location: Location.LocationObject;
   history: LocationHistoryPoint[];
 }) => void;
 
-// Backend config (tracking code and device secret)
-export let backendConfig: {
-  trackingCode: string;
-  deviceSecret: string;
+// Tracking config (device code for Firestore upload)
+export let trackingConfig: {
+  deviceCode: string; // e.g., "TRACK-ABC123" from backend
+  deviceSecret?: string; // For backend API (optional)
 } | null = null;
 
-export function setBackendConfig(config: { trackingCode: string; deviceSecret: string }) {
-  backendConfig = config;
+/**
+ * Generate unique device code if not exists
+ * Format: TRACK-XXXXXXX
+ */
+export async function generateDeviceCode(): Promise<string> {
+  try {
+    let code = await AsyncStorage.getItem(STORAGE_KEY_DEVICE_CODE);
+    if (!code) {
+      const randomPart = Math.random().toString(36).substr(2, 7).toUpperCase();
+      code = `TRACK-${randomPart}`;
+      await AsyncStorage.setItem(STORAGE_KEY_DEVICE_CODE, code);
+      console.log('✅ Generated new device code:', code);
+    }
+    return code;
+  } catch (error) {
+    console.warn('Failed to generate device code:', error);
+    return 'TRACK-UNKNOWN';
+  }
+}
+
+/**
+ * Get device code, auto-generate if not exists
+ */
+export async function getDeviceCode(): Promise<string> {
+  return generateDeviceCode();
+}
+
+export function setTrackingConfig(config: { deviceCode: string; deviceSecret?: string }) {
+  trackingConfig = config;
+  console.log('✅ Tracking config set:', config.deviceCode);
 }
 
 let foregroundSubscription: Location.LocationSubscription | null = null;
@@ -44,7 +75,7 @@ TaskManager.defineTask(LOCATION_TASK, async ({ data, error }) => {
 async function handleLocation(location: Location.LocationObject) {
   const currentHistory = await loadHistory();
   const point: LocationHistoryPoint = {
-    deviceId: 'local-device',
+    deviceId: trackingConfig?.deviceCode || 'local-device',
     latitude: location.coords.latitude,
     longitude: location.coords.longitude,
     timestamp: location.timestamp ?? Date.now(),
@@ -53,19 +84,26 @@ async function handleLocation(location: Location.LocationObject) {
   const updatedHistory = addLocationToHistory(currentHistory, point);
   await saveHistory(updatedHistory);
   
-  // Auto-upload to backend if configured
-  if (backendConfig) {
-    try {
-      await updateLocation(
-        backendConfig.trackingCode,
-        backendConfig.deviceSecret,
-        point.latitude,
-        point.longitude,
-        point.accuracy ?? 0
-      );
-    } catch (error) {
-      console.warn('Failed to upload location to backend:', error);
+  // Upload to Firestore automatically
+  try {
+    // Get device code if not set in tracking config
+    let deviceCodeToUse = trackingConfig?.deviceCode;
+    if (!deviceCodeToUse) {
+      deviceCodeToUse = await getDeviceCode();
     }
+
+    const uploaded = await uploadLocationByCode(
+      deviceCodeToUse,
+      getDefaultProjectId(),
+      point,
+      getDefaultApiKey()
+    );
+    if (uploaded) {
+      console.log('✅ Location uploaded to Firestore:', deviceCodeToUse);
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to upload to Firestore:', error);
+    // Continue tracking locally, Firebase sync is optional
   }
   
   if (locationHandler) {
@@ -93,6 +131,13 @@ async function requestBackgroundPermission(): Promise<boolean> {
 
 export async function startForegroundTracking(handler: LocationUpdateHandler) {
   locationHandler = handler;
+  
+  // Auto-setup device code if not already configured
+  if (!trackingConfig) {
+    const deviceCode = await getDeviceCode();
+    setTrackingConfig({ deviceCode });
+  }
+  
   const isGranted = await requestPermissions();
   if (!isGranted) {
     throw new Error('Location permission not granted');

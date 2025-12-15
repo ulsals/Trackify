@@ -27,7 +27,7 @@ export function ShareLocationButton({ onShared }: ShareLocationButtonProps) {
     try {
       const response = await createTrackingCode(deviceName);
       
-      // Store device secret locally for location updates
+      // Store device info locally
       await AsyncStorage.setItem('tracking_code', response.code);
       await AsyncStorage.setItem('device_secret', response.deviceSecret);
       await AsyncStorage.setItem('device_name', deviceName);
@@ -39,13 +39,6 @@ export function ShareLocationButton({ onShared }: ShareLocationButtonProps) {
         'Success!',
         `Your tracking code: ${response.code}\n\nShare this code with others to let them track your location.`,
         [
-          {
-            text: 'Copy Code',
-            onPress: () => {
-              // TODO: Implement clipboard copy
-              console.log('Copy to clipboard:', response.code);
-            },
-          },
           { text: 'OK' },
         ]
       );

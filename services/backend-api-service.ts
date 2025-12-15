@@ -256,9 +256,32 @@ export async function updateLocation(
 
 /**
  * Get device location by code
+ * Tries Firestore first, then backend, then mock data
  */
 export async function getLocationByCode(code: string): Promise<LocationData | null> {
-  // Try backend first
+  // Try Firestore first (direct API)
+  try {
+    const { getDefaultApiKey, getDefaultProjectId } = require('@/config/firebase-helper');
+    const { fetchLocationByCode } = require('@/services/firestore-service');
+    
+    console.log('📥 Fetching location from Firestore...', { code });
+    const location = await fetchLocationByCode(code, getDefaultProjectId(), getDefaultApiKey());
+    
+    if (location) {
+      console.log('✅ Location fetched from Firestore:', location);
+      return {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        timestamp: location.timestamp,
+        accuracy: location.accuracy,
+        updatedAt: location.timestamp,
+      };
+    }
+  } catch (error: any) {
+    console.warn('⚠️ Firestore fetch failed:', error?.message);
+  }
+
+  // Try backend
   if (!USE_MOCK_BACKEND) {
     try {
       console.log('📥 Fetching location from backend...', { code });
@@ -285,15 +308,14 @@ export async function getLocationByCode(code: string): Promise<LocationData | nu
       }
 
       const data = await response.json();
-      console.log('✅ Location fetched successfully:', data);
+      console.log('✅ Location fetched successfully from backend:', data);
       return data.location;
     } catch (error: any) {
-      console.warn('⚠️ Backend request failed, using mock:', error?.message);
-      // Fall through to mock implementation
+      console.warn('⚠️ Backend request failed, trying mock:', error?.message);
     }
   }
 
-  // Mock implementation
+  // Mock implementation (fallback)
   return new Promise((resolve) => {
     setTimeout(() => {
       const location = mockLocations.get(code);

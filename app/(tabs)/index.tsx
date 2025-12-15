@@ -1,55 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-// --- PERMINTAAN IZIN BACKGROUND LOCATION (untuk GPS tracking background) ---
-useEffect(() => {
-  const requestBackgroundLocation = async () => {
-    if (Platform.OS === "android") {
-      try {
-        const { requestBackgroundPermissionsAsync } = require("expo-location");
-        const bgStatus = await requestBackgroundPermissionsAsync();
-        if (bgStatus.status !== "granted") {
-          Alert.alert(
-            "Izin Latar Belakang Diperlukan",
-            "Aplikasi membutuhkan izin lokasi di latar belakang agar tracking GPS tetap berjalan saat aplikasi tidak aktif."
-          );
-        }
-      } catch (e) {
-        console.warn("Gagal meminta izin background location:", e);
-      }
-    }
-  };
-  requestBackgroundLocation();
-}, []);
-
 import { BatteryOptimizationBar } from "@/components/battery-optimization-bar";
-import { JoinWithCode } from "@/components/join-with-code";
 import { LocationHistoryPanel } from "@/components/location-history-panel";
 import { MapCard } from "@/components/map-card";
 import { ShareLocationButton } from "@/components/share-location-button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import {
-  TrackedDevice,
-  TrackedDevicesList,
+    TrackedDevice,
+    TrackedDevicesList,
 } from "@/components/tracked-devices-list";
 import { Colors } from "@/constants/theme";
-import { getLocationByCode } from "@/services/backend-api-service";
 import {
-  setBackendConfig,
-  startBackgroundTracking,
-  startForegroundTracking,
-  stopBackgroundTracking,
-  stopForegroundTracking,
+    setTrackingConfig,
+    startBackgroundTracking,
+    startForegroundTracking,
+    stopBackgroundTracking,
+    stopForegroundTracking,
 } from "@/services/location-tracking";
 import {
-  clearHistory,
-  loadHistory,
-  loadSettings,
-  saveHistory,
+    clearHistory,
+    loadHistory,
+    loadSettings,
+    saveHistory,
 } from "@/services/storage-service";
 import { LocationHistoryPoint } from "@/types/models";
 import { getOptimalTrackingInterval } from "@/utils/battery-optimizer";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, Platform, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const [history, setHistory] = useState<LocationHistoryPoint[]>([]);
@@ -63,10 +40,32 @@ export default function HomeScreen() {
   const [batterySaver, setBatterySaver] = useState(true);
   const [backgroundTracking, setBackgroundTracking] = useState(false);
   const [trackedDevices, setTrackedDevices] = useState<TrackedDevice[]>([]);
+  const [isSharing, setIsSharing] = useState(false);
   const trackingInterval = useMemo(
     () => getOptimalTrackingInterval(batteryLevel ?? 0.5, batterySaver),
     [batteryLevel, batterySaver]
   );
+
+  // --- PERMINTAAN IZIN BACKGROUND LOCATION (untuk GPS tracking background) ---
+  useEffect(() => {
+    const requestBackgroundLocation = async () => {
+      if (Platform.OS === "android") {
+        try {
+          const { requestBackgroundPermissionsAsync } = require("expo-location");
+          const bgStatus = await requestBackgroundPermissionsAsync();
+          if (bgStatus.status !== "granted") {
+            Alert.alert(
+              "Izin Latar Belakang Diperlukan",
+              "Aplikasi membutuhkan izin lokasi di latar belakang agar tracking GPS tetap berjalan saat aplikasi tidak aktif."
+            );
+          }
+        } catch (e) {
+          console.warn("Gagal meminta izin background location:", e);
+        }
+      }
+    };
+    requestBackgroundLocation();
+  }, []);
 
   // load persisted data
   useEffect(() => {
@@ -131,7 +130,9 @@ export default function HomeScreen() {
   };
 
   const handleShared = (code: string, deviceSecret: string) => {
-    setBackendConfig({ trackingCode: code, deviceSecret });
+    // Set tracking config untuk auto-upload ke Firestore
+    setTrackingConfig({ deviceCode: code, deviceSecret });
+    setIsSharing(true);
   };
 
   const handleJoined = async (code: string, deviceName: string) => {
@@ -189,6 +190,17 @@ export default function HomeScreen() {
     setTrackedDevices(updated);
   };
 
+  // Real-time polling untuk tracked devices setiap 3 detik
+  useEffect(() => {
+    if (trackedDevices.length === 0) return;
+    
+    const interval = setInterval(() => {
+      handleRefreshTrackedDevices();
+    }, 3000); // Poll every 3 seconds
+    
+    return () => clearInterval(interval);
+  }, [trackedDevices.length]);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -220,8 +232,6 @@ export default function HomeScreen() {
         </ThemedView>
 
         <ShareLocationButton onShared={handleShared} />
-
-        <JoinWithCode onJoined={handleJoined} />
 
         <TrackedDevicesList
           devices={trackedDevices}
