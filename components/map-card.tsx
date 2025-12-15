@@ -1,9 +1,9 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Colors } from "@/constants/theme";
+import { useMemo } from "react";
+import { StyleSheet, View } from "react-native";
+import { WebView } from "react-native-webview";
 
 interface TrackedDeviceMapData {
   firestoreId: string;
@@ -26,6 +26,7 @@ interface MapCardProps {
   zones?: any[];
   history?: LocationHistoryPoint[];
   trackedDevices: TrackedDeviceMapData[];
+  selectedDeviceId?: string;
 }
 
 const leafletCdn = `
@@ -36,24 +37,24 @@ const leafletCdn = `
 // --- SOLUSI 3: GANTI KE TILE OSM STANDAR (WARNA-WARNI) ---
 // Sebelumnya: CartoDB Light (Pucat)
 // Sekarang: OpenStreetMap Standard (Seperti Gambar 3)
-const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const tileUrl = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
-export function MapCard({ 
-  userLocation, 
-  history = [], 
+export function MapCard({
+  userLocation,
+  history = [],
   trackedDevices = [],
+  selectedDeviceId,
 }: MapCardProps) {
-  
   const html = useMemo(() => {
     const user = userLocation;
     const historyPoints = history.map((h) => [h.latitude, h.longitude]);
-    
+
     const markers = trackedDevices.map((d) => ({
       name: d.name,
       lat: d.latitude,
       lng: d.longitude,
       ts: d.timestamp,
-      color: d.color || '#ff6d00' 
+      color: d.color || "#ff6d00",
     }));
 
     return `
@@ -90,7 +91,7 @@ export function MapCard({
 
           var markersData = ${JSON.stringify(markers)};
           var historyPath = ${JSON.stringify(historyPoints)};
-          var userLoc = ${user ? JSON.stringify(user) : 'null'};
+          var userLoc = ${user ? JSON.stringify(user) : "null"};
           var bounds = [];
 
           // 1. User Marker (Biru)
@@ -132,7 +133,7 @@ export function MapCard({
       </body>
       </html>
     `;
-  }, [userLocation, history, trackedDevices]);
+  }, [userLocation, history, trackedDevices, selectedDeviceId]);
 
   return (
     <ThemedView style={styles.container}>
@@ -168,13 +169,13 @@ const styles = StyleSheet.create({
   mapWrapper: {
     height: 200, // --- SOLUSI 1: TINGGI DIPERKECIL (Dari 350 ke 200) ---
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: Colors.light.border,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
   },
   webview: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
 });
