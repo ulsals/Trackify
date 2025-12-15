@@ -22,7 +22,7 @@ export interface FirestoreLocation {
 }
 
 let lastUploadTime = 0;
-const UPLOAD_INTERVAL_MS = 5000; // Upload every 5 seconds
+const UPLOAD_INTERVAL_MS = 10000; // Upload every 10 seconds
 
 /**
  * Upload current location to Firestore for a device code
