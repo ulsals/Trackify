@@ -1,6 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+// --- PERMINTAAN IZIN BACKGROUND LOCATION (untuk GPS tracking background) ---
+useEffect(() => {
+  const requestBackgroundLocation = async () => {
+    if (Platform.OS === "android") {
+      try {
+        const { requestBackgroundPermissionsAsync } = require("expo-location");
+        const bgStatus = await requestBackgroundPermissionsAsync();
+        if (bgStatus.status !== "granted") {
+          Alert.alert(
+            "Izin Latar Belakang Diperlukan",
+            "Aplikasi membutuhkan izin lokasi di latar belakang agar tracking GPS tetap berjalan saat aplikasi tidak aktif."
+          );
+        }
+      } catch (e) {
+        console.warn("Gagal meminta izin background location:", e);
+      }
+    }
+  };
+  requestBackgroundLocation();
+}, []);
 
 import { BatteryOptimizationBar } from "@/components/battery-optimization-bar";
 import { JoinWithCode } from "@/components/join-with-code";

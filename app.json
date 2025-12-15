@@ -22,16 +22,16 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      // "permissions": [
-      //   "ACCESS_COARSE_LOCATION",
-      //   "ACCESS_FINE_LOCATION",
-      //   "ACCESS_BACKGROUND_LOCATION",
-      //   "BLUETOOTH",
-      //   "BLUETOOTH_ADMIN",
-      //   "BLUETOOTH_SCAN",
-      //   "BLUETOOTH_CONNECT",
-      //   "BLUETOOTH_ADVERTISE"
-      // ],
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_ADVERTISE"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.gregeddd.Trackify",
@@ -59,7 +59,10 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,
-          "modes": ["central", "peripheral"],
+          "modes": [
+            "central",
+            "peripheral"
+          ],
           "bluetoothAlwaysPermission": "Izinkan aplikasi mengakses Bluetooth untuk melacak perangkat."
         }
       ],
@@ -68,7 +71,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Izinkan aplikasi melacak lokasi barang secara background."
         }
-      ]
+      ],
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true,

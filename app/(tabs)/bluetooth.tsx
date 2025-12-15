@@ -1,4 +1,8 @@
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import * as BackgroundTask from "expo-background-task";
+import { BackgroundTaskResult } from "expo-background-task";
+import * as Notifications from "expo-notifications";
+import * as TaskManager from "expo-task-manager";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +17,32 @@ import {
   View,
 } from "react-native";
 import { BleManager, Device, ScanMode } from "react-native-ble-plx";
+// --- BACKGROUND BLE MONITORING TASK ---
+const BLE_MONITOR_TASK = "ble-monitor-task";
+TaskManager.defineTask(BLE_MONITOR_TASK, async () => {
+  try {
+    const manager = new BleManager();
+    // Ambil daftar perangkat yang ingin dipantau dari storage (untuk demo, hardcode id)
+    // Untuk produksi, gunakan SecureStore/AsyncStorage untuk menyimpan id perangkat
+    // Contoh: const trackedIds = await AsyncStorage.getItem('trackedDeviceIds');
+    // Di sini, scan semua device dan kirim notifikasi jika tidak ditemukan
+    const devices = await manager.devices([]); // Kosongkan array untuk scan semua
+    // Demo: jika tidak ada device ditemukan, kirim notifikasi
+    if (!devices || devices.length === 0) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "Trackify: Tidak ada perangkat terdeteksi",
+          body: "Perangkat Anda tidak terdeteksi di background!",
+          sound: true,
+        },
+        trigger: null,
+      });
+    }
+    return BackgroundTaskResult.Success;
+  } catch (e) {
+    return BackgroundTaskResult.Failed;
+  }
+});
 
 import Modal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -48,7 +78,25 @@ export default function BluetoothScreen() {
     myDevicesRef.current = myDevices;
   }, [myDevices]);
 
-  // --- 1. SETUP PERIZINAN PINTAR (Sesuai Versi Android) ---
+  // --- 0. SETUP NOTIFIKASI & BACKGROUND TASK ---
+  useEffect(() => {
+    Notifications.requestPermissionsAsync();
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    // Daftarkan background task BLE monitor
+    BackgroundTask.registerTaskAsync(BLE_MONITOR_TASK, {
+      minimumInterval: 15 * 60, // 15 menit (Android minimum)
+    });
+  }, []);
+
+  // --- 1. SETUP PERIZINAN PINTAR (Sesuai Versi Android) & BACKGROUND LOCATION ---
   useEffect(() => {
     const requestPermissions = async () => {
       if (Platform.OS === "android") {
@@ -98,6 +146,23 @@ export default function BluetoothScreen() {
                 "Aplikasi butuh lokasi untuk scan bluetooth di Android versi ini."
               );
             }
+          }
+
+          // Tambahan: Minta izin background location (Android 10+)
+          // Gunakan expo-location agar dialog izin background muncul
+          try {
+            const {
+              requestBackgroundPermissionsAsync,
+            } = require("expo-location");
+            const bgStatus = await requestBackgroundPermissionsAsync();
+            if (bgStatus.status !== "granted") {
+              Alert.alert(
+                "Izin Latar Belakang Diperlukan",
+                "Aplikasi membutuhkan izin lokasi di latar belakang agar BLE monitoring tetap berjalan saat aplikasi tidak aktif."
+              );
+            }
+          } catch (e) {
+            console.warn("Gagal meminta izin background location:", e);
           }
         } catch (err) {
           console.warn(err);
@@ -369,7 +434,20 @@ export default function BluetoothScreen() {
     const now = new Date();
     const tanggal = now.toLocaleDateString();
     const waktu = now.toLocaleTimeString();
-    // Tampilkan notifikasi visual
+    // Notifikasi lokal (expo-notifications)
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: "PERINGATAN! Perangkat Terputus",
+        body: `Perangkat: ${
+          item.name || "Unknown Device"
+        }\nTanggal: ${tanggal}\nWaktu: ${waktu}\nKoneksi perangkat terputus! Segera cek barang Anda!`,
+        sound: true,
+        vibrate: [700, 400, 700, 400, 700],
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: null,
+    });
+    // Tampilkan alert jika app sedang aktif
     Alert.alert(
       "PERINGATAN! Perangkat Terputus",
       `Perangkat: ${
