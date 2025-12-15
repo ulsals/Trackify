@@ -9,6 +9,7 @@ import {
     TrackedDevicesList,
 } from "@/components/tracked-devices-list";
 import { Colors } from "@/constants/theme";
+import { getLocationByCode } from "@/services/backend-api-service";
 import {
     setTrackingConfig,
     startBackgroundTracking,
@@ -16,7 +17,6 @@ import {
     stopBackgroundTracking,
     stopForegroundTracking,
 } from "@/services/location-tracking";
-import { getLocationByCode } from "@/services/backend-api-service";
 import {
     clearHistory,
     loadHistory,
