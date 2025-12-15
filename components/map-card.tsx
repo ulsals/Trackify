@@ -1,14 +1,20 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
-import { Device, GeofenceZone, LocationHistoryPoint } from '@/types/models';
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-export interface TrackedDeviceLocation {
+interface TrackedDeviceMapData {
   firestoreId: string;
   name: string;
+  latitude: number;
+  longitude: number;
+  timestamp: number;
+  color?: string;
+}
+
+interface LocationHistoryPoint {
   latitude: number;
   longitude: number;
   timestamp: number;
@@ -16,173 +22,122 @@ export interface TrackedDeviceLocation {
 
 interface MapCardProps {
   userLocation?: { latitude: number; longitude: number };
-  devices: Device[];
-  zones: GeofenceZone[];
-  history: LocationHistoryPoint[];
-  selectedDeviceId?: string;
-  trackedDevices?: TrackedDeviceLocation[];
+  devices?: any[];
+  zones?: any[];
+  history?: LocationHistoryPoint[];
+  trackedDevices: TrackedDeviceMapData[];
 }
 
 const leafletCdn = `
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin="" />
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 `;
 
-const tileUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png';
+// --- SOLUSI 3: GANTI KE TILE OSM STANDAR (WARNA-WARNI) ---
+// Sebelumnya: CartoDB Light (Pucat)
+// Sekarang: OpenStreetMap Standard (Seperti Gambar 3)
+const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-export function MapCard({ userLocation, devices, zones, history, selectedDeviceId, trackedDevices = [] }: MapCardProps) {
+export function MapCard({ 
+  userLocation, 
+  history = [], 
+  trackedDevices = [],
+}: MapCardProps) {
+  
   const html = useMemo(() => {
-    const deviceMarkers = devices.map((d) => ({
-      id: d.id,
-      name: d.name,
-      lat: d.latitude,
-      lng: d.longitude,
-      status: d.status,
-    }));
-    const geoZones = zones.map((z) => ({
-      id: z.id,
-      name: z.name,
-      lat: z.latitude,
-      lng: z.longitude,
-      radius: z.radius,
-      type: z.type,
-      enabled: z.enabled,
-      deviceId: z.deviceId,
-    }));
-    const historyPoints = history.map((h) => ({
-      lat: h.latitude,
-      lng: h.longitude,
-      ts: h.timestamp,
-    }));
-    const trackedMarkers = trackedDevices.map((d) => ({
-      firestoreId: d.firestoreId,
+    const user = userLocation;
+    const historyPoints = history.map((h) => [h.latitude, h.longitude]);
+    
+    const markers = trackedDevices.map((d) => ({
       name: d.name,
       lat: d.latitude,
       lng: d.longitude,
       ts: d.timestamp,
+      color: d.color || '#ff6d00' 
     }));
+
     return `
       <!DOCTYPE html>
       <html>
       <head>
-        <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         ${leafletCdn}
         <style>
-          html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #fff; }
-          .legend { position: absolute; bottom: 50px; right: 12px; background: rgba(255,255,255,0.95); padding: 10px 12px; border-radius: 8px; font-family: sans-serif; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 140px; }
-          .legend h4 { margin: 0 0 6px 0; font-size: 12px; font-weight: 600; }
-          .legend div { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
-          .dot { width: 10px; height: 10px; border-radius: 50%; }
+          /* Reset Margin */
+          html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #e5e3df; }
+          
+          /* Kustomisasi Ukuran Font Attribution agar tidak terlalu mencolok */
+          .leaflet-control-attribution { font-size: 9px !important; color: #666; }
         </style>
       </head>
       <body>
         <div id="map"></div>
-        <div class="legend">
-          <h4>Legend</h4>
-          <div><span class="dot" style="background:#1a73e8"></span><span>Your Location</span></div>
-          <div><span class="dot" style="background:#4caf50"></span><span>Online Device</span></div>
-          <div><span class="dot" style="background:#9e9e9e"></span><span>Offline Device</span></div>
-          <div><span class="dot" style="background:#ff6d00"></span><span>Tracked Device</span></div>
-          <div><span class="dot" style="background:#2196f3"></span><span>History Path</span></div>
-          <div><span class="dot" style="background:#f44336"></span><span>Last Known</span></div>
-        </div>
         <script>
-          const map = L.map('map', { zoomControl: true });
-          L.tileLayer('${tileUrl}', { maxZoom: 19 }).addTo(map);
+          // Inisialisasi Peta
+          var map = L.map('map', { 
+            zoomControl: false, // Matikan tombol zoom (+/-) agar bersih di HP
+            attributionControl: true 
+          });
 
-          const user = ${userLocation ? JSON.stringify(userLocation) : 'null'};
-          const devices = ${JSON.stringify(deviceMarkers)};
-          const zones = ${JSON.stringify(geoZones)};
-          const history = ${JSON.stringify(historyPoints)};
-          const tracked = ${JSON.stringify(trackedMarkers)};
-          const selectedId = ${selectedDeviceId ? JSON.stringify(selectedDeviceId) : 'null'};
+          // --- SOLUSI 2: HAPUS TULISAN "Leaflet" BIRU ---
+          // Ini menghapus prefix "Leaflet" tapi tetap membiarkan copyright OpenStreetMap (Wajib)
+          map.attributionControl.setPrefix(false); 
+          
+          L.tileLayer('${tileUrl}', { 
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(map);
 
-          const markers = [];
-          const zoneLayers = [];
+          var markersData = ${JSON.stringify(markers)};
+          var historyPath = ${JSON.stringify(historyPoints)};
+          var userLoc = ${user ? JSON.stringify(user) : 'null'};
+          var bounds = [];
 
-          if (user) {
-            const userMarker = L.circleMarker([user.latitude, user.longitude], {
-              radius: 8,
-              color: '#1a73e8',
-              fillColor: '#1a73e8',
-              fillOpacity: 0.8,
-            }).addTo(map).bindPopup('You');
-            markers.push(userMarker);
+          // 1. User Marker (Biru)
+          if (userLoc) {
+            var userMarker = L.circleMarker([userLoc.latitude, userLoc.longitude], {
+              radius: 8, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.8, weight: 2
+            }).addTo(map);
+            bounds.push([userLoc.latitude, userLoc.longitude]);
           }
 
-          devices.forEach(d => {
-            const marker = L.circleMarker([d.lat, d.lng], {
-              radius: selectedId === d.id ? 10 : 8,
-              color: d.status === 'online' ? '#4caf50' : '#9e9e9e',
-              fillColor: d.status === 'online' ? '#4caf50' : '#9e9e9e',
-              fillOpacity: 0.9,
-            }).addTo(map).bindPopup(d.name || d.id);
-            markers.push(marker);
-          });
-
-          zones.forEach(z => {
-            if (!z.enabled) return;
-            const colors = {
-              safe: '#4caf50',
-              warning: '#ffc107',
-              caution: '#ff9800',
-              critical: '#f44336',
-            };
-            const circle = L.circle([z.lat, z.lng], {
-              radius: z.radius,
-              color: colors[z.type] || '#9e9e9e',
-              weight: 1,
-              fillColor: colors[z.type] || '#9e9e9e',
-              fillOpacity: 0.08,
-            }).addTo(map).bindPopup(z.name + ' (' + z.type + ')');
-            zoneLayers.push(circle);
-          });
-
-          tracked.forEach(t => {
-            const marker = L.circleMarker([t.lat, t.lng], {
-              radius: 9,
-              color: '#ff6d00',
-              fillColor: '#ff6d00',
-              fillOpacity: 0.85,
-            }).addTo(map).bindPopup(t.name + ' (Firestore)');
-            markers.push(marker);
-          });
-
-          if (history.length > 1) {
-            const latlngs = history.map(p => [p.lat, p.lng]);
-            L.polyline(latlngs, { color: '#2196f3', weight: 3, opacity: 0.8 }).addTo(map);
-            const last = history[history.length - 1];
-            L.circleMarker([last.lat, last.lng], {
-              radius: 7,
-              color: '#f44336',
-              fillColor: '#f44336',
-              fillOpacity: 0.9,
-            }).addTo(map).bindPopup('Last known');
+          // 2. History Path (Garis Biru)
+          if (historyPath.length > 1) {
+            L.polyline(historyPath, { color: '#2196f3', weight: 4, opacity: 0.7 }).addTo(map);
+            historyPath.forEach(p => bounds.push(p));
           }
 
-          if (markers.length > 0) {
-            const group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds().pad(0.3));
+          // 3. Tracked Devices (Warna-Warni)
+          markersData.forEach(function(d) {
+            L.circleMarker([d.lat, d.lng], {
+              radius: 10,
+              color: 'white',       // Border Putih agar kontras dengan peta warna-warni
+              weight: 2,
+              fillColor: d.color,   // Warna Isi sesuai device
+              fillOpacity: 1,
+              opacity: 1
+            }).addTo(map); // Popup dihapus sementara agar tidak menutupi peta kecil
+            
+            bounds.push([d.lat, d.lng]);
+          });
+
+          // 4. Auto Zoom
+          if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [30, 30] });
           } else {
-            map.setView([0, 0], 2);
+            // Default View (Monas, Jakarta)
+            map.setView([-6.1754, 106.8272], 13);
           }
         </script>
       </body>
       </html>
     `;
-  }, [devices, zones, history, userLocation, selectedDeviceId, trackedDevices]);
+  }, [userLocation, history, trackedDevices]);
 
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="subtitle" style={styles.title}>
-        Live Map (OpenStreetMap)
+        Peta Lokasi
       </ThemedText>
       <View style={styles.mapWrapper}>
         <WebView
@@ -191,6 +146,9 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
           style={styles.webview}
           nestedScrollEnabled
           androidLayerType="hardware"
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          scrollEnabled={false} // PENTING: Agar peta tidak mengganggu scroll halaman
         />
       </View>
     </ThemedView>
@@ -199,21 +157,24 @@ export function MapCard({ userLocation, devices, zones, history, selectedDeviceI
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
-    padding: 12,
+    paddingHorizontal: 16,
+    marginBottom: 10,
     gap: 8,
   },
   title: {
     fontSize: 18,
+    marginBottom: 4,
   },
   mapWrapper: {
-    height: 360,
+    height: 200, // --- SOLUSI 1: TINGGI DIPERKECIL (Dari 350 ke 200) ---
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.light.border,
+    backgroundColor: '#f0f0f0',
   },
   webview: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
 });
