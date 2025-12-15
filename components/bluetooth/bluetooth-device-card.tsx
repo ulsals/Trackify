@@ -1,6 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { TrackedDevice, getColorByIndex } from "@/utils/bluetooth-helpers";
+import { TrackedDevice } from "@/utils/bluetooth-helpers";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -31,7 +31,8 @@ export function BluetoothDeviceCard({
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.name || "");
-  const deviceColor = getColorByIndex(index);
+  // Gunakan warna permanen dari item.color, fallback abu-abu jika tidak ada
+  const deviceColor = item.color || "#999";
 
   const isConnected = item.status === "CONNECTED" || item.status === "FAR";
   const isFar = item.status === "FAR";

@@ -1,6 +1,6 @@
 import { Device } from "react-native-ble-plx";
 
-// --- TIPE DATA ---
+// --- TIPE DATA UPDATE (Tambah properti color) ---
 export interface TrackedDevice {
   id: string;
   name: string | null;
@@ -14,6 +14,7 @@ export interface TrackedDevice {
     timestamp: number;
     address?: string;
   };
+  color: string; // <-- WARNA DISIMPAN DISINI (PERMANEN)
 }
 
 // --- KONFIGURASI WARNA ---
@@ -21,27 +22,21 @@ export const DEVICE_COLORS = [
   "#FF5733", "#33FF57", "#3357FF", "#F333FF", "#FF33A8", "#33FFF5", "#FFA533",
 ];
 
-export const getColorByIndex = (index: number) => {
-  return DEVICE_COLORS[index % DEVICE_COLORS.length];
+// Helper untuk memilih warna acak/berurutan (dipakai saat Add Device)
+export const getNextColor = (currentCount: number) => {
+  return DEVICE_COLORS[currentCount % DEVICE_COLORS.length];
 };
 
-// --- HELPER MAP (PERBAIKAN DISINI) ---
-export const getTrackedDeviceLocations = (devices: TrackedDevice[]) => {
-  // Gunakan 'reduce' agar kita bisa mengakses index asli (i) 
-  // sambil memfilter perangkat yang tidak punya lokasi.
-  return devices.reduce((acc, d, index) => {
-    if (d.lastKnownLocation) {
-      acc.push({
-        firestoreId: d.id,
-        name: d.name || "Unknown Device",
-        latitude: d.lastKnownLocation.latitude,
-        longitude: d.lastKnownLocation.longitude,
-        timestamp: d.lastKnownLocation.timestamp,
-        address: d.lastKnownLocation.address,
-        // PENTING: Gunakan 'index' asli dari array utama, bukan index hasil filter
-        color: getColorByIndex(index), 
-      });
-    }
-    return acc;
-  }, [] as any[]);
-};
+// --- HELPER MAP UPDATE (Lebih Sederhana) ---
+export const getTrackedDeviceLocations = (devices: TrackedDevice[]) =>
+  devices
+    .filter((d) => d.lastKnownLocation)
+    .map((d) => ({
+      firestoreId: d.id,
+      name: d.name || "Unknown Device",
+      latitude: d.lastKnownLocation?.latitude ?? 0,
+      longitude: d.lastKnownLocation?.longitude ?? 0,
+      timestamp: d.lastKnownLocation?.timestamp ?? 0,
+      address: d.lastKnownLocation?.address,
+      color: d.color, // <-- AMBIL LANGSUNG DARI DATA, TIDAK DIHITUNG ULANG
+    }));
