@@ -83,7 +83,6 @@ export default function BluetoothScreen() {
     Notifications.requestPermissionsAsync();
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
         shouldShowBanner: true,
@@ -619,9 +618,7 @@ export default function BluetoothScreen() {
           />
         )}
       </ThemedView>
-      <View
-        style={{ height: 1, backgroundColor: "#ccc", marginVertical: 10 }}
-      />
+      {/* Garis pembatas dihilangkan agar UI lebih bersih, tidak ada pembagian page */}
       {/* Tombol Plus (+) di kanan bawah */}
       <TouchableOpacity
         style={styles.fab}
