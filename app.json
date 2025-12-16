@@ -4,7 +4,7 @@
     "slug": "Trackify",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/trackify/icon.png",
     "scheme": "trackify",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -37,16 +37,21 @@
       "package": "com.gregeddd.Trackify",
       "googleServicesFile": "./google-services.json"
     },
+    "notification": {
+      "icon": "./assets/trackify/notification-icon.png",
+      "color": "#0a7ea4",
+      "androidMode": "default" 
+    },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/trackify/icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/trackify/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
